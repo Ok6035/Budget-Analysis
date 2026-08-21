@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>50-30-20 Budget Planner</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dark-mode">
 
-  <!-- Top App Bar -->
+  <!-- Header -->
   <header class="app-header">
     <div class="brand">
       <div class="logo-icon">₹</div>
@@ -59,7 +60,6 @@
     <section class="card progress-section">
       <h2 class="section-title">Allocation Targets</h2>
       
-      <!-- Needs (50%) -->
       <div class="progress-group">
         <div class="progress-labels">
           <span class="category-title">Needs (50%)</span>
@@ -70,7 +70,6 @@
         </div>
       </div>
 
-      <!-- Wants (30%) -->
       <div class="progress-group">
         <div class="progress-labels">
           <span class="category-title">Wants (30%)</span>
@@ -129,9 +128,7 @@
         <h2 class="section-title">Recent Transactions</h2>
         <span class="count-badge" id="txCount">0 items</span>
       </div>
-      <div class="transaction-list" id="transactionList">
-        <!-- Dynamic items render here -->
-      </div>
+      <div class="transaction-list" id="transactionList"></div>
     </section>
 
   </main>
@@ -140,14 +137,19 @@
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>App Settings</h3>
+        <h3>Settings & Sync</h3>
         <button class="close-btn" id="closeSettingsBtn">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="settings-desc">Export your budget allocation summary and transaction history directly into a styled PDF document.</p>
-        <button class="btn-primary export-btn" id="exportPdfBtn">
-          📄 Export Data to PDF
-        </button>
+        <div class="sync-box">
+          <label><strong>Your Unique Sync ID:</strong></label>
+          <input type="text" id="syncIdInput" readonly style="margin: 6px 0; text-align: center; font-weight: bold;">
+          <button class="btn-secondary" id="copySyncCodeBtn" style="width: 100%; margin-bottom: 12px;">📋 Copy Sync Backup Code</button>
+          <button class="btn-secondary" id="importSyncCodeBtn" style="width: 100%;">📥 Import Backup Code</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid var(--card-border); margin: 16px 0;">
+        <p class="settings-desc">Export budget allocation summary and expenses to PDF offline.</p>
+        <button class="btn-primary export-btn" id="exportPdfBtn">📄 Export Data to PDF</button>
       </div>
     </div>
   </div>
@@ -156,7 +158,7 @@
   <div class="modal-overlay" id="deleteModal">
     <div class="modal-card confirm-card">
       <h3>Confirm Deletion</h3>
-      <p>Are you sure you want to delete this expense entry? This action cannot be undone.</p>
+      <p>Are you sure you want to delete this expense entry?</p>
       <div class="confirm-actions">
         <button class="btn-secondary" id="cancelDeleteBtn">No, Cancel</button>
         <button class="btn-danger" id="confirmDeleteBtn">Yes, Delete</button>
@@ -167,4 +169,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
