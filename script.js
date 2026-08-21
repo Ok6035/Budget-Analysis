@@ -1,12 +1,32 @@
-// --- State Management ---
-let state = {
+// --- State Management with localStorage Persistence ---
+const STORAGE_KEY = 'budget_planner_app_data_v1';
+
+// Default initial state if no saved data exists
+const defaultState = {
   income: 5000,
-  transactions: [
-    { id: 1, amount: 1200, type: 'Need', category: 'Grocery', note: 'Monthly Supplies' },
-    { id: 2, amount: 450, type: 'Want', category: 'Food', note: 'Weekend Dinner' }
-  ],
-  pendingDeleteId: null
+  transactions: [] // Empty list - no hardcoded expenses
 };
+
+// Load state from localStorage on startup
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading saved budget data:', e);
+    }
+  }
+  return defaultState;
+}
+
+// Global active state loaded directly from memory/storage
+let state = loadState();
+
+// Save state to localStorage whenever changes occur
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
 
 // --- DOM Elements ---
 const incomeInput = document.getElementById('incomeInput');
@@ -33,8 +53,11 @@ const deleteModal = document.getElementById('deleteModal');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-// --- Calculations & Updates ---
+// --- Calculations & Dashboard Updates ---
 function updateDashboard() {
+  // Sync the current income input display with saved state
+  incomeInput.value = state.income;
+
   const needsTarget = state.income * 0.50;
   const wantsTarget = state.income * 0.30;
   const savingsTarget = state.income * 0.20;
@@ -111,6 +134,7 @@ updateIncomeBtn.addEventListener('click', () => {
   const val = parseFloat(incomeInput.value);
   if (!isNaN(val) && val >= 0) {
     state.income = val;
+    saveState(); // Save to persistent storage
     updateDashboard();
   }
 });
@@ -131,7 +155,9 @@ expenseForm.addEventListener('submit', (e) => {
       note
     });
 
-    // Clear form inputs
+    saveState(); // Save updated list to storage immediately
+
+    // Reset inputs
     document.getElementById('expenseAmount').value = '';
     document.getElementById('expenseNote').value = '';
     updateDashboard();
@@ -154,6 +180,8 @@ confirmDeleteBtn.addEventListener('click', () => {
     state.transactions = state.transactions.filter(t => t.id !== state.pendingDeleteId);
     state.pendingDeleteId = null;
     deleteModal.classList.remove('active');
+    
+    saveState(); // Save changes after deletion
     updateDashboard();
   }
 });
@@ -167,18 +195,24 @@ exportPdfBtn.addEventListener('click', () => {
   window.print();
 });
 
-// --- Theme Toggle ---
+// --- Theme Toggle with Persistence ---
 themeToggleBtn.addEventListener('click', () => {
   document.body.classList.toggle('light-mode');
   const isLight = document.body.classList.contains('light-mode');
   themeIcon.textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('budget_planner_theme', isLight ? 'light' : 'dark');
 });
+
+// Restore saved theme on startup
+if (localStorage.getItem('budget_planner_theme') === 'light') {
+  document.body.classList.add('light-mode');
+  themeIcon.textContent = '☀️';
+}
 
 // Touch Zoom Prevention
 document.addEventListener('gesturestart', function (e) {
   e.preventDefault();
 });
 
-// Initial Setup
+// Initial Setup - Load data into view
 updateDashboard();
-
