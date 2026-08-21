@@ -1,1 +1,16 @@
-
+{
+  "name": "50-30-20 Budget Planner",
+  "short_name": "BudgetPlanner",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "description": "Offline-first 50-30-20 financial planner.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2489/2489756.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
