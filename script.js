@@ -1,29 +1,37 @@
-// --- State Management with localStorage Persistence ---
+// --- Service Worker Registration for Offline Mode ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Offline Service Worker Registered'))
+      .catch((err) => console.error('Service Worker registration failed:', err));
+  });
+}
+
+// --- State & Unique ID Management ---
 const STORAGE_KEY = 'budget_planner_app_data_v1';
 
-// Default initial state if no saved data exists
-const defaultState = {
-  income: 5000,
-  transactions: [] // Empty list - no hardcoded expenses
-};
+function generateUniqueId() {
+  return 'BP-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+}
 
-// Load state from localStorage on startup
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
       return JSON.parse(saved);
     } catch (e) {
-      console.error('Error loading saved budget data:', e);
+      console.error('Error loading budget data:', e);
     }
   }
-  return defaultState;
+  return {
+    userId: generateUniqueId(),
+    income: 5000,
+    transactions: []
+  };
 }
 
-// Global active state loaded directly from memory/storage
 let state = loadState();
 
-// Save state to localStorage whenever changes occur
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -41,8 +49,9 @@ const wantsBar = document.getElementById('wantsBar');
 const expenseForm = document.getElementById('expenseForm');
 const transactionList = document.getElementById('transactionList');
 const txCount = document.getElementById('txCount');
+const syncIdInput = document.getElementById('syncIdInput');
 
-// Modals & Triggers
+// Modals
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const themeIcon = document.getElementById('themeIcon');
 const settingsBtn = document.getElementById('settingsBtn');
@@ -52,11 +61,13 @@ const exportPdfBtn = document.getElementById('exportPdfBtn');
 const deleteModal = document.getElementById('deleteModal');
 const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+const copySyncCodeBtn = document.getElementById('copySyncCodeBtn');
+const importSyncCodeBtn = document.getElementById('importSyncCodeBtn');
 
-// --- Calculations & Dashboard Updates ---
+// --- Calculation & UI Updates ---
 function updateDashboard() {
-  // Sync the current income input display with saved state
   incomeInput.value = state.income;
+  syncIdInput.value = state.userId;
 
   const needsTarget = state.income * 0.50;
   const wantsTarget = state.income * 0.30;
@@ -73,24 +84,22 @@ function updateDashboard() {
   const totalSpent = needsSpent + wantsSpent;
   const remainingCash = state.income - totalSpent - savingsTarget;
 
-  // Render Metric Texts
   totalSpentText.textContent = `₹${totalSpent.toLocaleString()}`;
   remainingText.textContent = `₹${remainingCash.toLocaleString()}`;
   savingsText.textContent = `₹${savingsTarget.toLocaleString()}`;
 
-  // Needs Progress
+  // Needs Bar
   needsStat.textContent = `₹${needsSpent.toLocaleString()} / ₹${needsTarget.toLocaleString()}`;
   const needsPct = Math.min((needsSpent / needsTarget) * 100, 100) || 0;
   needsBar.style.width = `${needsPct}%`;
   needsBar.style.backgroundColor = needsSpent > needsTarget ? 'var(--danger-color)' : 'var(--needs-color)';
 
-  // Wants Progress
+  // Wants Bar
   wantsStat.textContent = `₹${wantsSpent.toLocaleString()} / ₹${wantsTarget.toLocaleString()}`;
   const wantsPct = Math.min((wantsSpent / wantsTarget) * 100, 100) || 0;
   wantsBar.style.width = `${wantsPct}%`;
   wantsBar.style.backgroundColor = wantsSpent > wantsTarget ? 'var(--danger-color)' : 'var(--wants-color)';
 
-  // Transaction List Rendering
   renderTransactions();
 }
 
@@ -129,12 +138,12 @@ function escapeHtml(str) {
   });
 }
 
-// --- Event Handlers ---
+// --- Interactions ---
 updateIncomeBtn.addEventListener('click', () => {
   const val = parseFloat(incomeInput.value);
   if (!isNaN(val) && val >= 0) {
     state.income = val;
-    saveState(); // Save to persistent storage
+    saveState();
     updateDashboard();
   }
 });
@@ -155,16 +164,14 @@ expenseForm.addEventListener('submit', (e) => {
       note
     });
 
-    saveState(); // Save updated list to storage immediately
-
-    // Reset inputs
+    saveState();
     document.getElementById('expenseAmount').value = '';
     document.getElementById('expenseNote').value = '';
     updateDashboard();
   }
 });
 
-// --- Deletion Double Verification Modal ---
+// Deletion
 window.promptDelete = function(id) {
   state.pendingDeleteId = id;
   deleteModal.classList.add('active');
@@ -180,13 +187,12 @@ confirmDeleteBtn.addEventListener('click', () => {
     state.transactions = state.transactions.filter(t => t.id !== state.pendingDeleteId);
     state.pendingDeleteId = null;
     deleteModal.classList.remove('active');
-    
-    saveState(); // Save changes after deletion
+    saveState();
     updateDashboard();
   }
 });
 
-// --- Settings & PDF Export ---
+// --- Settings & Cross-Browser Import/Export ---
 settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
 
@@ -195,7 +201,32 @@ exportPdfBtn.addEventListener('click', () => {
   window.print();
 });
 
-// --- Theme Toggle with Persistence ---
+// Copy Data Code for Other Browsers
+copySyncCodeBtn.addEventListener('click', () => {
+  const payload = btoa(JSON.stringify(state));
+  navigator.clipboard.writeText(payload);
+  alert('Backup code copied! Paste this into "Import Backup Code" in any other browser.');
+});
+
+// Import Data Code from Other Browsers
+importSyncCodeBtn.addEventListener('click', () => {
+  const code = prompt('Paste the Backup Code from your other browser:');
+  if (code) {
+    try {
+      const decoded = JSON.parse(atob(code));
+      if (decoded && decoded.transactions) {
+        state = decoded;
+        saveState();
+        updateDashboard();
+        alert('Data successfully synced across browser!');
+      }
+    } catch (err) {
+      alert('Invalid backup code.');
+    }
+  }
+});
+
+// Theme Toggle
 themeToggleBtn.addEventListener('click', () => {
   document.body.classList.toggle('light-mode');
   const isLight = document.body.classList.contains('light-mode');
@@ -203,16 +234,9 @@ themeToggleBtn.addEventListener('click', () => {
   localStorage.setItem('budget_planner_theme', isLight ? 'light' : 'dark');
 });
 
-// Restore saved theme on startup
 if (localStorage.getItem('budget_planner_theme') === 'light') {
   document.body.classList.add('light-mode');
   themeIcon.textContent = '☀️';
 }
 
-// Touch Zoom Prevention
-document.addEventListener('gesturestart', function (e) {
-  e.preventDefault();
-});
-
-// Initial Setup - Load data into view
 updateDashboard();
